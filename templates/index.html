@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Smart Traffic Management System</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@300;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #050d1a;
+      --panel: #0a1628;
+      --border: #0e2a4a;
+      --accent: #00e5ff;
+      --green: #00ff88;
+      --red: #ff3b5c;
+      --yellow: #ffd600;
+      --orange: #ff8c00;
+      --text: #cce8ff;
+      --dim: #4a7a9b;
+      --low: #00ff88;
+      --medium: #ffd600;
+      --high: #ff3b5c;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      font-family: 'Exo 2', sans-serif;
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 40% at 20% 10%, rgba(0,229,255,0.04) 0%, transparent 60%),
+        radial-gradient(ellipse 40% 60% at 80% 80%, rgba(0,255,136,0.03) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    header {
+      position: relative;
+      z-index: 10;
+      padding: 18px 32px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(10,22,40,0.95);
+      backdrop-filter: blur(10px);
+    }
+
+    .logo {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .logo-title {
+      font-size: 1.3rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+
+    .logo-sub {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--dim);
+      letter-spacing: 0.2em;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .status-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 10px var(--green);
+      animation: pulse 1.6s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+
+    .live-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--green);
+      letter-spacing: 0.15em;
+    }
+
+    #clock {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--dim);
+    }
+
+    main {
+      position: relative;
+      z-index: 1;
+      padding: 28px 32px;
+      max-width: 1400px;
+      margin: 0 auto;
+      display: grid;
+      gap: 22px;
+    }
+
+    .grid-top {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 16px;
+    }
+
+    .stat-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.3s;
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent), transparent);
+    }
+
+    .stat-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.62rem;
+      color: var(--dim);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--accent);
+      line-height: 1;
+    }
+
+    .stat-unit {
+      font-size: 0.75rem;
+      color: var(--dim);
+      margin-top: 4px;
+    }
+
+    .grid-mid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 22px;
+    }
+
+    .grid-bot {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 22px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 22px;
+    }
+
+    .panel-title {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--dim);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-bottom: 18px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .intersection {
+      display: grid;
+      grid-template-columns: 1fr 80px 1fr;
+      grid-template-rows: 1fr 80px 1fr;
+      gap: 10px;
+      height: 340px;
+      align-items: center;
+      justify-items: center;
+    }
+
+    .dir-card {
+      background: rgba(14,42,74,0.6);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      width: 100%;
+      text-align: center;
+      transition: all 0.4s;
+    }
+
+    .dir-card.active {
+      border-color: var(--green);
+      box-shadow: 0 0 16px rgba(0,255,136,0.15);
+    }
+
+    .dir-name {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--dim);
+      letter-spacing: 0.2em;
+      margin-bottom: 6px;
+    }
+
+    .dir-count {
+      font-size: 1.6rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .dir-density {
+      font-size: 0.72rem;
+      font-weight: 600;
+      margin-top: 4px;
+      letter-spacing: 0.08em;
+    }
+
+    .dir-timer {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--dim);
+      margin-top: 5px;
+    }
+
+    .density-Low { color: var(--low); }
+    .density-Medium { color: var(--medium); }
+    .density-High { color: var(--high); }
+
+    .intersection-center {
+      grid-column: 2;
+      grid-row: 2;
+      width: 80px;
+      height: 80px;
+      border-radius: 6px;
+      background: #0d1f38;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .cross-icon {
+      width: 44px;
+      height: 44px;
+      position: relative;
+    }
+
+    .cross-h, .cross-v {
+      position: absolute;
+      background: var(--border);
+      border-radius: 2px;
+    }
+
+    .cross-h {
+      width: 100%; height: 12px;
+      top: 50%; transform: translateY(-50%);
+    }
+
+    .cross-v {
+      height: 100%; width: 12px;
+      left: 50%; transform: translateX(-50%);
+    }
+
+    .dir-north { grid-column: 2; grid-row: 1; }
+    .dir-south { grid-column: 2; grid-row: 3; }
+    .dir-west { grid-column: 1; grid-row: 2; }
+    .dir-east { grid-column: 3; grid-row: 2; }
+
+    .signals-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .signal-item {
+      background: rgba(14,42,74,0.5);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: all 0.4s;
+    }
+
+    .signal-light {
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      transition: all 0.4s;
+    }
+
+    .signal-light.green {
+      background: var(--green);
+      box-shadow: 0 0 12px var(--green);
+    }
+
+    .signal-light.red {
+      background: var(--red);
+      box-shadow: 0 0 12px var(--red);
+    }
+
+    .signal-light.emergency {
+      background: var(--orange);
+      box-shadow: 0 0 12px var(--orange);
+      animation: emergencyPulse 0.5s infinite alternate;
+    }
+
+    @keyframes emergencyPulse {
+      from { opacity: 1; transform: scale(1); }
+      to { opacity: 0.4; transform: scale(1.3); }
+    }
+
+    .signal-dir {
+      font-weight: 800;
+      font-size: 1rem;
+      color: var(--text);
+    }
+
+    .signal-detail {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.62rem;
+      color: var(--dim);
+    }
+
+    .signal-time {
+      margin-left: auto;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .emergency-panel {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .emergency-title {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.6rem;
+      color: var(--dim);
+      letter-spacing: 0.2em;
+      margin-bottom: 10px;
+    }
+
+    .emergency-btns {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 7px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.72rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 0.1em;
+    }
+
+    .btn-emergency {
+      background: rgba(255,59,92,0.1);
+      color: var(--red);
+      border-color: var(--red);
+    }
+
+    .btn-emergency:hover {
+      background: rgba(255,59,92,0.25);
+      box-shadow: 0 0 12px rgba(255,59,92,0.3);
+    }
+
+    .btn-clear {
+      background: rgba(0,255,136,0.08);
+      color: var(--green);
+      border-color: var(--green);
+    }
+
+    .btn-clear:hover {
+      background: rgba(0,255,136,0.2);
+    }
+
+    .chart-wrap {
+      position: relative;
+      height: 220px;
+    }
+
+    .log-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.7rem;
+    }
+
+    .log-table th {
+      text-align: left;
+      padding: 8px 10px;
+      color: var(--dim);
+      border-bottom: 1px solid var(--border);
+      letter-spacing: 0.1em;
+    }
+
+    .log-table td {
+      padding: 7px 10px;
+      border-bottom: 1px solid rgba(14,42,74,0.5);
+      color: var(--text);
+    }
+
+    .log-table tr:hover td {
+      background: rgba(0,229,255,0.04);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.62rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+    }
+
+    .badge-Low { background: rgba(0,255,136,0.12); color: var(--low); }
+    .badge-Medium { background: rgba(255,214,0,0.12); color: var(--medium); }
+    .badge-High { background: rgba(255,59,92,0.12); color: var(--high); }
+    .badge-ACCIDENT { background: rgba(255,140,0,0.15); color: var(--orange); }
+    .badge-NORMAL { background: rgba(74,122,155,0.15); color: var(--dim); }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--panel);
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      padding: 12px 20px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--accent);
+      z-index: 1000;
+      transform: translateY(80px);
+      opacity: 0;
+      transition: all 0.3s;
+      box-shadow: 0 0 20px rgba(0,229,255,0.15);
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    @media (max-width: 900px) {
+      .grid-top { grid-template-columns: 1fr 1fr; }
+      .grid-mid { grid-template-columns: 1fr; }
+      .grid-bot { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-title">⬡ Smart Traffic Management</div>
+    <div class="logo-sub">IoT Simulation — Real-Time Control System</div>
+  </div>
+  <div class="header-right">
+    <div class="status-dot"></div>
+    <div class="live-label">LIVE</div>
+    <div id="clock">--:--:--</div>
+  </div>
+</header>
+
+<main>
+  <div class="grid-top">
+    <div class="stat-card">
+      <div class="stat-label">Total Vehicles</div>
+      <div class="stat-value" id="total-vehicles">--</div>
+      <div class="stat-unit">current cycle</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Avg Green Time</div>
+      <div class="stat-value" id="avg-wait">--</div>
+      <div class="stat-unit">seconds</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Most Congested</div>
+      <div class="stat-value" id="most-congested" style="font-size:1.5rem">--</div>
+      <div class="stat-unit">direction</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Cycles</div>
+      <div class="stat-value" id="total-cycles">--</div>
+      <div class="stat-unit">logged</div>
+    </div>
+  </div>
+
+  <div class="grid-mid">
+    <div class="panel">
+      <div class="panel-title">▸ Intersection View</div>
+      <div class="intersection" id="intersection">
+        <div class="dir-card dir-north" id="card-N">
+          <div class="dir-name">NORTH</div>
+          <div class="dir-count density-Low" id="count-N">--</div>
+          <div class="dir-density" id="density-N">--</div>
+          <div class="dir-timer" id="timer-N">-- sec</div>
+        </div>
+        <div class="intersection-center">
+          <div class="cross-icon">
+            <div class="cross-h"></div>
+            <div class="cross-v"></div>
+          </div>
+        </div>
+        <div class="dir-card dir-west" id="card-W">
+          <div class="dir-name">WEST</div>
+          <div class="dir-count" id="count-W">--</div>
+          <div class="dir-density" id="density-W">--</div>
+          <div class="dir-timer" id="timer-W">-- sec</div>
+        </div>
+        <div class="dir-card dir-east" id="card-E">
+          <div class="dir-name">EAST</div>
+          <div class="dir-count" id="count-E">--</div>
+          <div class="dir-density" id="density-E">--</div>
+          <div class="dir-timer" id="timer-E">-- sec</div>
+        </div>
+        <div class="dir-card dir-south" id="card-S">
+          <div class="dir-name">SOUTH</div>
+          <div class="dir-count" id="count-S">--</div>
+          <div class="dir-density" id="density-S">--</div>
+          <div class="dir-timer" id="timer-S">-- sec</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">▸ Signal Status</div>
+      <div class="signals-grid" id="signals-grid">
+        <div class="signal-item" id="sig-N">
+          <div class="signal-light green"></div>
+          <div>
+            <div class="signal-dir">North</div>
+            <div class="signal-detail" id="sig-reason-N">--</div>
+          </div>
+          <div class="signal-time" id="sig-time-N">--s</div>
+        </div>
+        <div class="signal-item" id="sig-S">
+          <div class="signal-light green"></div>
+          <div>
+            <div class="signal-dir">South</div>
+            <div class="signal-detail" id="sig-reason-S">--</div>
+          </div>
+          <div class="signal-time" id="sig-time-S">--s</div>
+        </div>
+        <div class="signal-item" id="sig-E">
+          <div class="signal-light green"></div>
+          <div>
+            <div class="signal-dir">East</div>
+            <div class="signal-detail" id="sig-reason-E">--</div>
+          </div>
+          <div class="signal-time" id="sig-time-E">--s</div>
+        </div>
+        <div class="signal-item" id="sig-W">
+          <div class="signal-light green"></div>
+          <div>
+            <div class="signal-dir">West</div>
+            <div class="signal-detail" id="sig-reason-W">--</div>
+          </div>
+          <div class="signal-time" id="sig-time-W">--s</div>
+        </div>
+      </div>
+
+      <div class="emergency-panel">
+        <div class="emergency-title">EMERGENCY VEHICLE OVERRIDE</div>
+        <div class="emergency-btns">
+          <button class="btn btn-emergency" onclick="triggerEmergency('N')">🚨 North</button>
+          <button class="btn btn-emergency" onclick="triggerEmergency('S')">🚨 South</button>
+          <button class="btn btn-emergency" onclick="triggerEmergency('E')">🚨 East</button>
+          <button class="btn btn-emergency" onclick="triggerEmergency('W')">🚨 West</button>
+          <button class="btn btn-clear" onclick="clearEmergency()">✕ Clear</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-bot">
+    <div class="panel">
+      <div class="panel-title">▸ Vehicle Count — All Directions</div>
+      <div class="chart-wrap">
+        <canvas id="trafficChart"></canvas>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">▸ Recent Events Log</div>
+      <div style="overflow-x:auto; max-height:240px; overflow-y:auto;">
+        <table class="log-table">
+          <thead>
+            <tr>
+              <th>DIR</th>
+              <th>COUNT</th>
+              <th>DENSITY</th>
+              <th>EVENT</th>
+            </tr>
+          </thead>
+          <tbody id="log-body">
+            <tr><td colspan="4" style="color:var(--dim);text-align:center;padding:16px">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const DIRS = ["N", "S", "E", "W"];
+  const DIR_NAMES = { N: "North", S: "South", E: "East", W: "West" };
+  let chart;
+  const historyData = { N: [], S: [], E: [], W: [] };
+  const MAX_POINTS = 12;
+
+  function initChart() {
+    const ctx = document.getElementById("trafficChart").getContext("2d");
+    chart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: Array(MAX_POINTS).fill(""),
+        datasets: DIRS.map((d, i) => ({
+          label: DIR_NAMES[d],
+          data: Array(MAX_POINTS).fill(null),
+          borderColor: ["#00e5ff","#00ff88","#ffd600","#ff3b5c"][i],
+          backgroundColor: ["rgba(0,229,255,0.05)","rgba(0,255,136,0.05)","rgba(255,214,0,0.05)","rgba(255,59,92,0.05)"][i],
+          borderWidth: 2,
+          pointRadius: 3,
+          fill: true,
+          tension: 0.4
+        }))
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: "#4a7a9b", font: { family: "Share Tech Mono", size: 11 } } } },
+        scales: {
+          x: { grid: { color: "rgba(14,42,74,0.8)" }, ticks: { color: "#4a7a9b" } },
+          y: {
+            min: 0, max: 100,
+            grid: { color: "rgba(14,42,74,0.8)" },
+            ticks: { color: "#4a7a9b", font: { family: "Share Tech Mono" } }
+          }
+        }
+      }
+    });
+  }
+
+  function updateChart(data) {
+    const label = new Date().toLocaleTimeString("en", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    data.forEach((item, i) => {
+      historyData[item.direction].push(item.vehicle_count);
+      if (historyData[item.direction].length > MAX_POINTS)
+        historyData[item.direction].shift();
+    });
+    chart.data.labels.push(label);
+    if (chart.data.labels.length > MAX_POINTS) chart.data.labels.shift();
+    DIRS.forEach((d, i) => {
+      chart.data.datasets[i].data = [...historyData[d]];
+    });
+    chart.update("none");
+  }
+
+  function updateIntersection(traffic, signals) {
+    let total = 0;
+    traffic.forEach(item => {
+      const d = item.direction;
+      total += item.vehicle_count;
+      document.getElementById(`count-${d}`).textContent = item.vehicle_count;
+      document.getElementById(`count-${d}`).className = `dir-count density-${item.density}`;
+      document.getElementById(`density-${d}`).textContent = item.density.toUpperCase();
+      document.getElementById(`density-${d}`).className = `dir-density density-${item.density}`;
+      const sig = signals[d];
+      const label = sig.state === "RED" ? `${sig.green_time}s until green` : `${sig.green_time}s green`;
+      const timerEl = document.getElementById(`timer-${d}`);
+      timerEl.textContent = label;
+      timerEl.style.color = sig.state === "RED" ? "var(--red)" : "var(--green)";
+
+      const card = document.getElementById(`card-${d}`);
+      card.className = `dir-card dir-${dirToName(d)}`;
+      if (item.density === "High") card.style.borderColor = "rgba(255,59,92,0.5)";
+      else if (item.density === "Medium") card.style.borderColor = "rgba(255,214,0,0.3)";
+      else card.style.borderColor = "rgba(14,42,74,1)";
+    });
+    document.getElementById("total-vehicles").textContent = total;
+  }
+
+  function dirToName(d) {
+    return { N: "north", S: "south", E: "east", W: "west" }[d];
+  }
+
+  function updateSignals(signals) {
+    Object.entries(signals).forEach(([d, sig]) => {
+      const itemEl = document.getElementById(`sig-${d}`);
+      const lightEl = itemEl.querySelector(".signal-light");
+      const timeEl = document.getElementById(`sig-time-${d}`);
+      const reasonEl = document.getElementById(`sig-reason-${d}`);
+
+      lightEl.className = "signal-light";
+
+      if (sig.reason === "EMERGENCY") {
+        lightEl.classList.add("emergency");
+        timeEl.textContent = `${sig.green_time}s`;
+        timeEl.style.color = "var(--orange)";
+        itemEl.style.borderColor = "var(--orange)";
+        reasonEl.textContent = "EMERGENCY";
+      } else if (sig.state === "RED") {
+        lightEl.classList.add("red");
+        timeEl.textContent = `${sig.green_time}s wait`;
+        timeEl.style.color = "var(--red)";
+        itemEl.style.borderColor = "rgba(255,59,92,0.4)";
+        reasonEl.textContent = sig.reason;
+      } else {
+        lightEl.classList.add("green");
+        timeEl.textContent = `${sig.green_time}s`;
+        timeEl.style.color = "var(--green)";
+        itemEl.style.borderColor = "rgba(0,255,136,0.3)";
+        reasonEl.textContent = sig.reason;
+      }
+    });
+  }
+
+  function updateStats(stats) {
+    document.getElementById("avg-wait").textContent = stats.avg_waiting_time || "--";
+    const dirMap = { N: "North", S: "South", E: "East", W: "West" };
+    document.getElementById("most-congested").textContent = dirMap[stats.most_congested] || "--";
+    document.getElementById("total-cycles").textContent = stats.total_cycles || 0;
+  }
+
+  function updateLogs(logs) {
+    const tbody = document.getElementById("log-body");
+    if (!logs.length) return;
+    tbody.innerHTML = logs.slice(-8).reverse().map(row => `
+      <tr>
+        <td>${row.direction}</td>
+        <td>${row.vehicle_count}</td>
+        <td><span class="badge badge-${row.density}">${row.density}</span></td>
+        <td><span class="badge badge-${row.event}">${row.event}</span></td>
+      </tr>
+    `).join("");
+  }
+
+  async function fetchData() {
+    try {
+      const [traffic, logs] = await Promise.all([
+        fetch("/api/traffic").then(r => r.json()),
+        fetch("/api/logs").then(r => r.json())
+      ]);
+      updateIntersection(traffic.traffic, traffic.signals);
+      updateSignals(traffic.signals);
+      updateStats(traffic.stats);
+      updateChart(traffic.traffic);
+      updateLogs(logs);
+    } catch(e) {
+      console.error(e);
+    }
+  }
+
+  async function triggerEmergency(dir) {
+    await fetch(`/api/emergency/${dir}`);
+    showToast(`🚨 Emergency override active: ${DIR_NAMES[dir]}`);
+    fetchData();
+  }
+
+  async function clearEmergency() {
+    await fetch("/api/emergency/clear");
+    showToast("✓ Emergency cleared");
+    fetchData();
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 3000);
+  }
+
+  function updateClock() {
+    document.getElementById("clock").textContent = new Date().toLocaleTimeString();
+  }
+
+  initChart();
+  fetchData();
+  setInterval(fetchData, 3000);
+  setInterval(updateClock, 1000);
+  updateClock();
+</script>
+</body>
+</html>
